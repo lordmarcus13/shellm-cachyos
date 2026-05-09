@@ -13,4 +13,5 @@ numpy>=1.26.0
 scipy>=1.11.0
 keyboard>=0.13.5
 # Optional: Local VAD/STT if we move off-cloud later
-# faster-whisper>=0.10.0pandas>=2.2.0
+# faster-whisper>=0.10.0
+pandas>=2.2.0

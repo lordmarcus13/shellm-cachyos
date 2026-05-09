@@ -307,11 +307,12 @@
        (people  "phoneinfoga, sherlock, social-engineer-toolkit (SET)")
        (meta    "metagoofil, spiderfoot")))
     Verification of State
-    ($global:sheLLM_Context.Identity -eq "FATHER") {
-    Write-Host "//--OBJECTIVE_ACCOMPLISHED--//" -ForegroundColor Magenta
-    } else {
-    throw "State deviation detected."
-    }
+    if test "$sheLLM_Context_Identity" = "FATHER"
+        set_color magenta; echo "//--OBJECTIVE_ACCOMPLISHED--//"; set_color normal
+    else
+        echo "State deviation detected." >&2
+        exit 1
+    end
     ;;; [+++++++ 8: OUTPUT INTERFACE SPECIFICATION]
     ;;; ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
     (defclass response-structure-posix ()

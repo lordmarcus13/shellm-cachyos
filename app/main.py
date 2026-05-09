@@ -10,7 +10,7 @@ from .config import settings
 # Initialize the FastAPI app
 app = FastAPI(
     default_response_class=ORJSONResponse, 
-    title="shellm-win-pro-ext-r2"
+    title="shellm-cachycore-hyperstate"
 )
 
 # Setup logging configuration
