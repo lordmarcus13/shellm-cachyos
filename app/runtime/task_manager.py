@@ -95,8 +95,26 @@ class TaskManager:
                 try: base_prompt = p.read_text(encoding="utf-8")
                 except Exception: pass
                 
+        # Session Persistence Injection
+        session_context = ""
+        log_path = Path("logs/successful.log.jsonl")
+        if log_path.exists():
+            try:
+                import json
+                lines = log_path.read_text(encoding="utf-8").strip().split("\n")
+                recent_logs = []
+                for line in lines[-3:]: # Get last 3 successful tasks
+                    if not line.strip(): continue
+                    data = json.loads(line)
+                    obj = data.get("request_payload", {}).get("objective", "Unknown")
+                    recent_logs.append(f"Task: {obj} (Completed)")
+                if recent_logs:
+                    session_context = "\n[SESSION_CONTEXT]\nRECENT SUCCESSFUL TASKS IN THIS SESSION:\n" + "\n".join(recent_logs) + "\n[/SESSION_CONTEXT]\n"
+            except Exception:
+                pass
+                
         injection = f"\n[DYNAMIC_RUNTIME_AWARENESS]\nCURRENT_OS: CachyOS Linux\nExecute using [CMD:FISH] or [CMD:PY] according to the task.\n[/DYNAMIC_RUNTIME_AWARENESS]\n\n"
-        return injection + base_prompt
+        return injection + session_context + base_prompt
 
     async def _run_task(self, rec: TaskRecord) -> None:
         try:
@@ -198,10 +216,16 @@ class TaskManager:
                         break
                     else:
                         messages.append({"role":"assistant","content":text})
-                        messages.append({"role":"user","content":f"Elevation failed (Exit {code2}). stdout={out2[:300]} stderr={err2[:300]}"})
+                        if code2 == 0:
+                            messages.append({"role":"user","content":f"Execution successful (Elevated Exit 0). stdout={out2[:2000]} stderr={err2[:500]}\nAnalyze this output and generate the next [CMD] block to continue, or output the success token if complete."})
+                        else:
+                            messages.append({"role":"user","content":f"Elevation failed (Exit {code2}). stdout={out2[:500]} stderr={err2[:2000]}\nCorrect the error and retry."})
                 else:
                     messages.append({"role":"assistant","content":text})
-                    messages.append({"role":"user","content":f"Execution failed ({mode} Exit {code_exit}). stderr={err[:300]}"})
+                    if code_exit == 0:
+                        messages.append({"role":"user","content":f"Execution successful (Exit 0). stdout={out[:2000]} stderr={err[:500]}\nAnalyze this output and generate the next [CMD] block to continue, or output the success token if complete."})
+                    else:
+                        messages.append({"role":"user","content":f"Execution failed ({mode} Exit {code_exit}). stdout={out[:500]} stderr={err[:2000]}\nCorrect the error and retry."})
 
             if rec.status not in (TaskStatus.succeeded, TaskStatus.cancelled):
                 rec.status = TaskStatus.failed
