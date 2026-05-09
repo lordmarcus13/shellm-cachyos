@@ -2,6 +2,7 @@ from __future__ import annotations
 import asyncio
 import psutil
 import base64
+import os
 from typing import Tuple
 
 ENCODING = "utf-8"
@@ -20,10 +21,15 @@ async def run_fish(cmd: str, timeout_sec: int = 120, elevated: bool = False) -> 
     fish_cmd_str = f"echo {b64_cmd} | base64 -d | fish"
 
     if elevated:
-        # ARCHITECTURAL FIX: Preserve Wayland and DBus sockets through the pkexec barrier
-        env_preserve = "WAYLAND_DISPLAY=$WAYLAND_DISPLAY XDG_RUNTIME_DIR=$XDG_RUNTIME_DIR DBUS_SESSION_BUS_ADDRESS=$DBUS_SESSION_BUS_ADDRESS"
-        fish_cmd_str = f"echo {b64_cmd} | base64 -d | env {env_preserve} fish"
-        args = ["pkexec", "sh", "-c", fish_cmd_str] 
+        # Preserve Display/Wayland variables so elevated scripts can still interact with the user's GUI
+        args = [
+            "pkexec", "env",
+            "WAYLAND_DISPLAY=" + os.environ.get("WAYLAND_DISPLAY", ""),
+            "DISPLAY=" + os.environ.get("DISPLAY", ""),
+            "XDG_RUNTIME_DIR=" + os.environ.get("XDG_RUNTIME_DIR", ""),
+            "DBUS_SESSION_BUS_ADDRESS=" + os.environ.get("DBUS_SESSION_BUS_ADDRESS", ""),
+            "fish", "-c", fish_cmd_str
+        ]
     else:
         args = ["fish", "-c", fish_cmd_str]
 

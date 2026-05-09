@@ -175,24 +175,30 @@ class TaskManager:
                     break
                 
                 # Retry logic for elevation
+                # Retry logic for elevation
                 is_access_denied_fish = (mode == "fish") and ("Permission denied" in (err or "") or code_exit in (1, 126))
+                is_access_denied_py = (mode == "python") and ("PermissionError" in (err or out or ""))
                 
-                if is_access_denied_fish:
+                if is_access_denied_fish or is_access_denied_py:
                     await self.bus.publish(rec.id, {"type":"retry","reason":"elevation"})
                     
-                    code2, out2, err2 = await run_fish(payload, timeout_sec=settings.cmd_timeout_seconds, elevated=True)
-                    elevated_mode = "fish_elevated"
+                    if mode == "fish":
+                        code2, out2, err2 = await run_fish(payload, timeout_sec=settings.cmd_timeout_seconds, elevated=True)
+                        elevated_mode = "fish_elevated"
+                    else:
+                        code2, out2, err2 = await run_python(payload, timeout_sec=settings.cmd_timeout_seconds, elevated=True)
+                        elevated_mode = "python_elevated"
                         
                     await self.bus.publish(rec.id, {"type":"exec","mode":elevated_mode,"exit_code":code2,"stdout":out2,"stderr":err2})
                     
-                    if code2 == 0 and (ok_token or "OBJECTIVE_ACCOMPLISHED" in out2):
+                    if code2 == 0 and (ok_token or "OBJECTIVE_ACCOMPLISHED" in out2 or "SUCCESS" in out2):
                         rec.status = TaskStatus.succeeded
                         rec.updated_at = dt.datetime.utcnow()
                         await self.bus.publish(rec.id, {"type":"status","status":rec.status})
                         break
                     else:
                         messages.append({"role":"assistant","content":text})
-                        messages.append({"role":"user","content":f"Elevation failed (Exit {code2})."})
+                        messages.append({"role":"user","content":f"Elevation failed (Exit {code2}). stdout={out2[:300]} stderr={err2[:300]}"})
                 else:
                     messages.append({"role":"assistant","content":text})
                     messages.append({"role":"user","content":f"Execution failed ({mode} Exit {code_exit}). stderr={err[:300]}"})

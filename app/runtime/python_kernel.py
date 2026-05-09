@@ -8,7 +8,7 @@ from typing import Tuple
 # Standardizing I/O to UTF-8
 ENCODING = "utf-8"
 
-async def run_python(code: str, timeout_sec: int = 120) -> Tuple[int, str, str]:
+async def run_python(code: str, timeout_sec: int = 120, elevated: bool = False) -> Tuple[int, str, str]:
     """
     Executes a Python script securely via a temporary file.
     
@@ -29,7 +29,10 @@ async def run_python(code: str, timeout_sec: int = 120) -> Tuple[int, str, str]:
             
         # Construct command: python -u <script_path>
         # -u: Unbuffered binary stdout/stderr
-        cmd = [sys.executable, "-u", path]
+        if elevated:
+            cmd = ["pkexec", sys.executable, "-u", path]
+        else:
+            cmd = [sys.executable, "-u", path]
         
         proc = await asyncio.create_subprocess_exec(
             *cmd,
