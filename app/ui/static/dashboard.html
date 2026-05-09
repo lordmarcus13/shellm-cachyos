@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SHELLM :: HYPERSTATE DASHBOARD</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --neon-blue: #00f3ff;
+            --neon-pink: #ff00ff;
+            --void-bg: #0a0a0a;
+            --glass: rgba(255, 255, 255, 0.05);
+        }
+        body {
+            background-color: var(--void-bg);
+            color: #e0e0e0;
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+        .glass-panel {
+            background: var(--glass);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 8px;
+            padding: 20px;
+        }
+        .metric-value {
+            font-size: 2.5rem;
+            font-weight: bold;
+            text-shadow: 0 0 10px rgba(0, 243, 255, 0.5);
+        }
+        .status-online {
+            color: var(--neon-blue);
+            text-shadow: 0 0 10px var(--neon-blue);
+        }
+        .scan-line {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background: var(--neon-blue);
+            opacity: 0.3;
+            animation: scan 3s linear infinite;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+    </style>
+</head>
+<body class="h-screen flex flex-col p-6 gap-6">
+    <div class="scan-line"></div>
+    
+    <!-- HEADER -->
+    <header class="flex justify-between items-center glass-panel">
+        <div>
+            <h1 class="text-2xl font-bold tracking-widest">SHELLM // HYPERSTATE</h1>
+            <p class="text-sm opacity-60">DUAL-KERNEL SUBSTRATE: <span class="status-online">ACTIVE</span></p>
+        </div>
+        <div class="text-right">
+            <p class="text-xs">SYSTEM_TIME: <span id="clock">--:--:--</span></p>
+            <p class="text-xs">DTRM_ROUTING: ENABLED</p>
+        </div>
+    </header>
+
+    <!-- METRICS GRID -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 flex-grow">
+        
+        <!-- STAT A -->
+        <div class="glass-panel flex flex-col justify-center items-center">
+            <h3 class="text-sm uppercase tracking-wider mb-2">Total Tasks</h3>
+            <div id="total-tasks" class="metric-value text-white">--</div>
+        </div>
+
+        <!-- STAT B -->
+        <div class="glass-panel flex flex-col justify-center items-center">
+            <h3 class="text-sm uppercase tracking-wider mb-2">Success Rate</h3>
+            <div id="success-rate" class="metric-value status-online">--%</div>
+        </div>
+
+        <!-- CHART -->
+        <div class="glass-panel relative">
+            <canvas id="performanceChart"></canvas>
+        </div>
+
+    </div>
+
+    <!-- LOG FEED -->
+    <div class="glass-panel h-1/3 overflow-hidden flex flex-col">
+        <h3 class="text-xs uppercase border-b border-gray-700 pb-2 mb-2">Live Execution Feed</h3>
+        <div id="log-feed" class="flex-grow overflow-y-auto font-mono text-xs space-y-1 opacity-80">
+            <!-- Logs injected here -->
+        </div>
+    </div>
+
+    <!-- DATA INJECTION -->
+    <!-- We load the data file first, which sets window.TELEMETRY_DATA -->
+    <script src="telemetry.js"></script>
+
+    <script>
+        // CLOCK
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toLocaleTimeString();
+        }, 1000);
+
+        // DATA RENDER
+        function renderDashboard() {
+            try {
+                // Read Global Data (CORS Bypass)
+                const data = window.TELEMETRY_DATA;
+                
+                if (!data) {
+                     // Retry once small delay if race condition (though script tag is blocking mostly)
+                     console.log("Waiting for data...");
+                     return; 
+                }
+                
+                // Update DOM
+                document.getElementById('total-tasks').innerText = data.total_tasks;
+                document.getElementById('success-rate').innerText = data.success_rate + '%';
+                
+                // Colorize Success Rate
+                const rateEl = document.getElementById('success-rate');
+                if (data.success_rate > 90) rateEl.style.color = '#00f3ff'; // Cyan
+                else if (data.success_rate > 50) rateEl.style.color = '#ffcc00'; // Yellow
+                else rateEl.style.color = '#ff0055'; // Red
+
+                // Update Chart
+                updateChart(data);
+
+                // Update Logs
+                const feed = document.getElementById('log-feed');
+                feed.innerHTML = '';
+                if (data.recent_tasks) {
+                    data.recent_tasks.reverse().forEach(task => {
+                        const div = document.createElement('div');
+                        const statusColor = task.status === 'succeeded' ? '#00f3ff' : '#ff0055';
+                        const taskId = task.task_id ? task.task_id.substring(0,8) : "UNK";
+                        const obj = task.request_payload?.objective || 'Unknown Objective';
+                        div.innerHTML = `<span style="color:${statusColor}">[${task.status ? task.status.toUpperCase() : 'UNK'}]</span> ${taskId} :: ${obj}`;
+                        feed.appendChild(div);
+                    });
+                }
+
+            } catch (e) {
+                console.log("Telemetry render failed", e);
+                document.getElementById('total-tasks').innerText = "ERR";
+            }
+        }
+
+        // CHART SETUP
+        let chart;
+        function updateChart(data) {
+            const ctx = document.getElementById('performanceChart').getContext('2d');
+            if (chart) chart.destroy();
+            
+            chart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Success', 'Failure'],
+                    datasets: [{
+                        data: [data.success_count || 0, data.failed_count || 0],
+                        backgroundColor: ['#00f3ff', '#ff0055'],
+                        borderWidth: 0,
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { position: 'bottom', labels: { color: '#fff' } }
+                    },
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // INIT
+        // Check if data loaded immediately, or wait slightly
+        if (window.TELEMETRY_DATA) {
+            renderDashboard();
+        } else {
+            // Polling fallback
+            const checkData = setInterval(() => {
+                if(window.TELEMETRY_DATA) {
+                    clearInterval(checkData);
+                    renderDashboard();
+                }
+            }, 100);
+        }
+    </script>
+</body>
+</html>

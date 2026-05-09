@@ -1,0 +1,22 @@
+# Environments
+venv/
+env/
+.env
+
+# Cache
+__pycache__/
+*.pyc
+.pytest_cache/
+
+# State & Logs
+logs/
+*.log
+*.jsonl
+cycle_memory.txt
+cycle_state.txt
+.agents/
+
+# OS/IDE
+.DS_Store
+.vscode/
+.idea/

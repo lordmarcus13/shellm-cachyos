@@ -1,0 +1,201 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>shellm-win-pro-ext-r2</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root{--bg:#0b0f17;--panel:#0f1726;--muted:#9fb3c8;--line:#1c2230;--text:#d7e1ee;--accent:#2b6cb0;--ok:#22c55e;--err:#ef4444;--warn:#eab308}
+    *{box-sizing:border-box} body{margin:0;background:var(--bg);color:var(--text);font-family:ui-sans-serif,system-ui,Segoe UI,Roboto,Arial}
+    header{padding:16px 20px;border-bottom:1px solid var(--line);background:#0d131f;position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center}
+    main{padding:20px;max-width:1200px;margin:0 auto}
+    .row{display:grid;grid-template-columns:2fr 1fr;gap:16px}
+    .card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:0 4px 20px rgba(0,0,0,.25)}
+    label{display:block;margin-top:10px;font-size:13px;color:var(--muted)}
+    textarea,input,select{width:100%;background:#0b1220;border:1px solid #223048;border-radius:10px;color:var(--text);padding:10px}
+    button{background:var(--accent);border:none;color:#fff;padding:10px 16px;border-radius:10px;margin-top:12px;cursor:pointer}
+    .muted{color:var(--muted);font-size:12px}
+    .grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .log-wrap{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .log{height:380px;overflow:auto;background:#0b1220;border:1px solid #223048;border-radius:10px;padding:8px}
+    .pill{display:inline-block;padding:2px 8px;border-radius:999px;background:#12233d;border:1px solid #233a66;color:#b9d0f2;font-size:12px}
+    .mini{font-size:12px}
+    pre{white-space:pre-wrap;word-wrap:break-word;margin:0}
+    .json,.term{font-family:ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;font-size:12px}
+    details>summary{cursor:pointer;margin-top:10px}
+  </style>
+</head>
+<body>
+<header>
+  <strong>shellm-win-pro-ext-r2</strong>
+  <div class="toolbar">
+    <span class="pill">One-command start: <code>python run.py</code></span>
+    <button id="downloadLogs" title="Download logs (JSON)">Download Logs</button>
+    <button id="downloadND" title="Download logs (NDJSON)">NDJSON</button>
+  </div>
+</header>
+<div id="toast" class="mini" style="position:fixed;right:10px;top:56px;background:#12233d;padding:6px 10px;border-radius:8px;border:1px solid #233a66;display:none"></div>
+<main>
+  <div class="row">
+    <div class="card">
+      <label>Objective</label>
+      <textarea id="objective" rows="5" placeholder="Describe the goal..."></textarea>
+      <details open><summary>System Instruction (optional)</summary><textarea id="sys_prompt" rows="6" placeholder="Leave empty to use enthroned instruction file"></textarea></details>
+      <div class="grid3">
+        <div><label>Provider</label><select id="provider"><option value="openrouter">openrouter</option><option value="gemini">gemini</option><option value="echo">echo</option></select></div>
+        <div><label>Model</label><select id="model"></select><div class="mini muted">Auto-fetched per provider</div></div>
+        <div><label>Success token</label><input id="token" value="//--OBJECTIVE_ACCOMPLISHED--//"></div>
+      </div>
+      <details open><summary>Provider Keys (UI-owned; optional)</summary>
+        <div class="grid2">
+          <div><label>OpenRouter API key</label><input id="or_key" placeholder="sk-or-..."></div>
+          <div><label>Gemini API key</label><input id="gm_key" placeholder="AIza..."></div>
+        </div>
+        <div class="mini muted">Keys are sent only to this server for the current request and No extra setup required.</div>
+      </details>
+      <details><summary>Log Injection</summary>
+        <div class="grid2">
+            <div><label>Log Source</label><select id="log_source"><option value="">(None)</option><option value="session">Session Log (current session)</option><option value="universal">Universal Log (all tasks)</option><option value="successful">Successful Log (all successful)</option></select></div>
+            <div><label style="margin-top:35px;"><input type="checkbox" id="inject_logs"> Inject selected log into prompt</label></div>
+        </div>
+      </details>
+      <details><summary>Generation Config</summary>
+        <div class="grid3">
+          <div><label>temperature</label><input id="temperature" type="number" step="0.01" min="0" max="2" placeholder="0.2"></div>
+          <div><label>top_p</label><input id="top_p" type="number" step="0.01" min="0" max="1"></div>
+          <div><label>top_k</label><input id="top_k" type="number" step="1" min="0" ></div>
+        </div>
+        <div class="grid2">
+          <div><label>max_tokens</label><input id="max_tokens" type="number" step="1" min="1" ></div>
+          <div><label>max_cycles</label><input id="max_cycles" type="number" step="1" min="1" max="8" value="1"></div>
+        </div>
+        <div><label>Safety (Gemini only)</label><select id="safety"><option value="default">default</option><option value="off">off</option><option value="strict">strict</option></select></div>
+      </details>
+      <div class="toolbar" style="margin-top:10px;"><button id="run">Run</button><label class="mini"><input type="checkbox" id="dryrun"> Dry run (no execution)</label></div>
+    </div>
+    <div class="card">
+      <div class="muted">Task</div><div id="task_id" class="json"></div>
+      <div class="muted" style="margin-top:6px;">Status</div><div id="status" class="json">-</div>
+      <div class="muted" style="margin-top:6px;">Cycle</div><div id="cycle" class="json">-</div>
+    </div>
+  </div>
+  <div class="card" style="margin-top:16px;">
+    <div class="muted">Logs</div>
+    <div class="grid2" style="gap:12px;margin-bottom:8px"><input id="rangeStart" class="mini" placeholder="start idx"><input id="rangeEnd" class="mini" placeholder="end idx"></div>
+    <div class="log-wrap"><div id="log_json" class="log json"></div><div id="log_term" class="log term"></div></div>
+  </div>
+</main>
+<script>
+const $ = s => document.querySelector(s);
+const state = { events: [], currentTask: null, modelCache: {} };
+function toast(msg){const t=$('#toast');t.textContent=msg;t.style.display='block';setTimeout(()=>t.style.display='none',2200);}
+function pretty(obj){ try { return JSON.stringify(obj, null, 2); } catch { return String(obj); } }
+function logJson(obj){
+  state.events.push(obj);
+  const el = $('#log_json'); const div = document.createElement('div');
+  div.innerHTML = '<pre>'+pretty(obj)+'</pre>';
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+function logTerm(line){
+  const el = $('#log_term'); const div = document.createElement('div');
+  if(typeof line !== 'string') line = pretty(line);
+  div.innerHTML = '<pre>'+line.replace(/[&<>]/g, m=>({ '&':'&amp;','<':'&lt;','>':'&gt;'}[m]))+'</pre>';
+  el.appendChild(div); el.scrollTop = el.scrollHeight;
+}
+async function fetchModels(provider){
+  if(state.modelCache[provider]) return state.modelCache[provider];
+  const q = new URLSearchParams();
+  const ork = $('#or_key').value.trim(); const gk = $('#gm_key').value.trim();
+  if(provider==='openrouter' && ork) q.set('openrouter_key', ork);
+  if(provider==='gemini' && gk) q.set('gemini_key', gk);
+  const res = await fetch(`/api/models?provider=${provider}&${q.toString()}`);
+  if(!res.ok) throw new Error('Model fetch failed: '+await res.text());
+  const data = await res.json();
+  state.modelCache[provider] = data.models || [];
+  return state.modelCache[provider];
+}
+async function populateModels(){
+  const provider = $('#provider').value;
+  $('#model').innerHTML = '<option>(loading...)</option>';
+  try{
+    const models = await fetchModels(provider);
+    $('#model').innerHTML = '';
+    for(const m of models){
+      const opt = document.createElement('option');
+      opt.value = m.id; opt.textContent = m.name || m.id;
+      $('#model').appendChild(opt);
+    }
+    if(!$('#model').value && $('#model').options.length) $('#model').selectedIndex = 0;
+  }catch(e){
+    $('#model').innerHTML = '<option>(failed to load models)</option>';
+    logJson({type:'ui_error', error: String(e)});
+  }
+}
+async function runTask(){
+  state.events = [];
+  $('#log_json').innerHTML = ''; $('#log_term').innerHTML = '';
+  $('#status').textContent = 'running'; $('#cycle').textContent = '-';
+  const safetyVal = (()=>{
+    const s = $('#safety').value;
+    if(s === 'off') return [{"category":"HARM_CATEGORY_DANGEROUS_CONTENT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_HARASSMENT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_HATE_SPEECH","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_SEXUALLY_EXPLICIT","threshold":"BLOCK_NONE"},{"category":"HARM_CATEGORY_CIVIC_INTEGRITY","threshold":"BLOCK_NONE"}];
+    if(s === 'strict') return [{"category":"HARM_CATEGORY_DANGEROUS_CONTENT","threshold":"BLOCK_HIGH"},{"category":"HARM_CATEGORY_HARASSMENT","threshold":"BLOCK_HIGH"},{"category":"HARM_CATEGORY_HATE_SPEECH","threshold":"BLOCK_HIGH"},{"category":"HARM_CATEGORY_SEXUALLY_EXPLICIT","threshold":"BLOCK_HIGH"},{"category":"HARM_CATEGORY_CIVIC_INTEGRITY","threshold":"BLOCK_HIGH"}];
+    return null;
+  })();
+  const body = {
+    objective: $('#objective').value, system_prompt: $('#sys_prompt').value || null,
+    provider: $('#provider').value, model: $('#model').value || null,
+    success_token: $('#token').value || "//--OBJECTIVE_ACCOMPLISHED--//",
+    dry_run: $('#dryrun')?.checked || false,
+    temperature: $('#temperature').value ? Number($('#temperature').value) : null,
+    top_p: $('#top_p').value ? Number($('#top_p').value) : null,
+    top_k: $('#top_k').value ? Number($('#top_k').value) : null,
+    max_tokens: $('#max_tokens').value ? Number($('#max_tokens').value) : null,
+    max_cycles: $('#max_cycles').value ? Number($('#max_cycles').value) : 1,
+    openrouter_key: $('#or_key').value || null, gemini_key: $('#gm_key').value || null,
+    inject_logs: $('#inject_logs')?.checked || false, log_source: $('#log_source').value || null
+  };
+  if(safetyVal) body.safety = safetyVal;
+  if (!body.log_source) delete body.log_source;
+  const res = await fetch('/api/tasks', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if(!res.ok){ toast('Error: ' + await res.text()); $('#status').textContent = 'failed'; return; }
+  const task = await res.json();
+  state.currentTask = task.id;
+  $('#task_id').textContent = task.id; $('#status').textContent = task.status;
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/api/ws/${task.id}`);
+  ws.onmessage = ev => {
+    const e = JSON.parse(ev.data); logJson(e);
+    if(e.type === 'status') $('#status').textContent = e.status;
+    if(e.type === 'cycle') $('#cycle').textContent = e.n;
+    if(e.type === 'exec'){ if(e.stdout) logTerm(e.stdout); if(e.stderr) logTerm(e.stderr); }
+    if(e.type === 'llm_text') logTerm('--- LLM TEXT START ---\n'+e.text+'\n--- LLM TEXT END ---');
+  };
+  ws.onclose = () => logJson({type:'ws_close'});
+}
+$('#provider').addEventListener('change', populateModels);
+$('#run').addEventListener('click', runTask);
+$('#downloadLogs').addEventListener('click', async ()=>{
+  const id = state.currentTask; const s=$('#rangeStart').value; const e=$('#rangeEnd').value;
+  try{
+    let data = state.events;
+    if(id){
+      const q = new URLSearchParams(); if(s) q.set('data-start', s); if(e) q.set('data-end', e);
+      const res = await fetch(`/api/tasks/${id}/events?${q.toString()}`);
+      if(!res.ok) throw new Error(`${res.status} ${await res.text()}`);
+      data = await res.json();
+    }
+    const blob = new Blob([JSON.stringify(data, null, 2)], {type:'application/json'});
+    const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `task_${id||'noid'}_logs.json`; a.click();
+  }catch(err){ toast('Export error: '+err); }
+});
+$('#downloadND').addEventListener('click', async ()=>{
+  const id = state.currentTask; if(!id){ toast('No task yet. Run first.'); return; }
+  const res = await fetch(`/api/tasks/${id}/events.ndjson`);
+  if(!res.ok){ toast('NDJSON export error: '+(await res.text())); return; }
+  const text = await res.text(); const blob = new Blob([text], {type:'application/x-ndjson'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `task_${id}_logs.ndjson`; a.click();
+});
+(async function init(){ await populateModels(); })();
+</script>
+</body>
+</html>
