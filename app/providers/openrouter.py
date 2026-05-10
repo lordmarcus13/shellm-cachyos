@@ -17,7 +17,7 @@ class OpenRouterProvider:
             return r.json().get("data", [])
     async def complete(self, messages: Iterable[Dict[str,str]], model: str | None = None, **gen_params: Any) -> str:
         if not self.api_key: raise RuntimeError("OpenRouter API key not provided")
-        headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost", "X-Title": "shellm-win-pro-ext-r2", "Content-Type": "application/json"}
+        headers = {"Authorization": f"Bearer {self.api_key}", "HTTP-Referer": "http://localhost", "X-Title": "shellm-cachycore-hyperstate", "Content-Type": "application/json"}
         payload: dict[str, Any] = {"model": model or "qwen/qwen-2.5-72b-instruct", "messages": list(messages), "stream": False}
         for k in ("temperature","top_p","top_k","max_tokens"):
             if (v := gen_params.get(k)) is not None: payload[k] = v

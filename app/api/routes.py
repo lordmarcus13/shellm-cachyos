@@ -21,6 +21,20 @@ def make_provider(name: ProviderName, openrouter_key: Optional[str], gemini_key:
         return GeminiProvider(gemini_key or settings.gemini_api_key or "")
     return EchoProvider()
 
+@router.get("/settings")
+async def get_settings():
+    try:
+        with open("app/settings.json", "r") as f:
+            return __import__("json").load(f)
+    except FileNotFoundError:
+        return {}
+
+@router.post("/settings")
+async def save_settings(req: dict):
+    with open("app/settings.json", "w") as f:
+        __import__("json").dump(req, f)
+    return {"ok": True}
+
 @router.get("/models")
 async def list_models(provider: ProviderName = Query(...), openrouter_key: Optional[str] = Query(None), gemini_key: Optional[str] = Query(None)):
     p = make_provider(provider, openrouter_key, gemini_key)

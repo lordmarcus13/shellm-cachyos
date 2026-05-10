@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8">
-  <title>shellm-win-pro-ext-r2</title>
+  <title>shellm-cachycore-hyperstate</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <style>
     :root{--bg:#0b0f17;--panel:#0f1726;--muted:#9fb3c8;--line:#1c2230;--text:#d7e1ee;--accent:#2b6cb0;--ok:#22c55e;--err:#ef4444;--warn:#eab308}
@@ -28,9 +28,10 @@
 </head>
 <body>
 <header>
-  <strong>shellm-win-pro-ext-r2</strong>
+  <strong>shellm-cachycore-hyperstate</strong>
   <div class="toolbar">
     <span class="pill">One-command start: <code>python run.py</code></span>
+    <button id="saveSettings" title="Save current keys & config">Save Settings</button>
     <button id="downloadLogs" title="Download logs (JSON)">Download Logs</button>
     <button id="downloadND" title="Download logs (NDJSON)">NDJSON</button>
   </div>
@@ -195,7 +196,40 @@ $('#downloadND').addEventListener('click', async ()=>{
   const text = await res.text(); const blob = new Blob([text], {type:'application/x-ndjson'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `task_${id}_logs.ndjson`; a.click();
 });
-(async function init(){ await populateModels(); })();
+async function saveSettings(){
+  const body = {
+    sys_prompt: $('#sys_prompt').value,
+    provider: $('#provider').value, model: $('#model').value, token: $('#token').value,
+    or_key: $('#or_key').value, gm_key: $('#gm_key').value,
+    temperature: $('#temperature').value, top_p: $('#top_p').value,
+    top_k: $('#top_k').value, max_tokens: $('#max_tokens').value,
+    max_cycles: $('#max_cycles').value, safety: $('#safety').value
+  };
+  const res = await fetch('/api/settings', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
+  if(res.ok) toast('Settings saved'); else toast('Failed to save settings');
+}
+async function loadSettings(){
+  try{
+    const res = await fetch('/api/settings');
+    if(!res.ok) return;
+    const body = await res.json();
+    if(body.sys_prompt) $('#sys_prompt').value = body.sys_prompt;
+    if(body.provider) $('#provider').value = body.provider;
+    if(body.token) $('#token').value = body.token;
+    if(body.or_key) $('#or_key').value = body.or_key;
+    if(body.gm_key) $('#gm_key').value = body.gm_key;
+    if(body.temperature) $('#temperature').value = body.temperature;
+    if(body.top_p) $('#top_p').value = body.top_p;
+    if(body.top_k) $('#top_k').value = body.top_k;
+    if(body.max_tokens) $('#max_tokens').value = body.max_tokens;
+    if(body.max_cycles) $('#max_cycles').value = body.max_cycles;
+    if(body.safety) $('#safety').value = body.safety;
+    await populateModels();
+    if(body.model) $('#model').value = body.model;
+  }catch(e){}
+}
+$('#saveSettings').addEventListener('click', saveSettings);
+(async function init(){ await loadSettings(); if(!$('#model').options.length) await populateModels(); })();
 </script>
 </body>
 </html>
