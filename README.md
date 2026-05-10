@@ -20,10 +20,12 @@ It utilizes a **Dual-Kernel Routing Protocol (DTRM)**:
 ## Deployment Structure
 This repository represents a bare-bones, structurally clean deployment of the sheLLm architecture, strictly pruned of redundant nodes and old artifact data.
 
-### Initialization
-```fish
-python -m venv venv
-source venv/bin/activate.fish
-pip install -r requirements.txt
-python run.py
+### Professional Installation (Auto-Updating)
+Deploy the installer via bash. This automatically sets up the environment, dependencies, and a self-updating global executable wrapper.
+
+```bash
+curl -sSL https://raw.githubusercontent.com/lordmarcus13/shellm-cachyos/main/install.sh | bash
 ```
+
+Once installed, simply run `shellm` from anywhere in your terminal. 
+Every time you launch `shellm`, it will autonomously synchronize with this repository (`git pull origin main`) to ensure you are executing the latest architectural iteration.
