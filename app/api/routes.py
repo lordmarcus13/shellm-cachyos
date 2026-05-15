@@ -82,6 +82,9 @@ async def create_task(req: CreateTaskRequest):
             "top_p": req.top_p, 
             "top_k": req.top_k, 
             "max_tokens": req.max_tokens, 
+            "num_ctx": req.num_ctx,
+            "repeat_penalty": req.repeat_penalty,
+            "seed": req.seed,
             "safety": req.safety, 
             "max_cycles": req.max_cycles
         }

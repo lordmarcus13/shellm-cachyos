@@ -40,6 +40,9 @@ class LocalProvider:
         if (top_p := gen_params.get("top_p")) is not None: options["top_p"] = top_p
         if (top_k := gen_params.get("top_k")) is not None: options["top_k"] = top_k
         if (num_predict := gen_params.get("max_tokens")) is not None: options["num_predict"] = num_predict
+        if (num_ctx := gen_params.get("num_ctx")) is not None: options["num_ctx"] = num_ctx
+        if (repeat_penalty := gen_params.get("repeat_penalty")) is not None: options["repeat_penalty"] = repeat_penalty
+        if (seed := gen_params.get("seed")) is not None: options["seed"] = seed
         
         if options:
             payload["options"] = options

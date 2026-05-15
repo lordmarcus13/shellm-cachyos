@@ -48,7 +48,7 @@
         <div><label>Model</label><select id="model"></select><div class="mini muted">Auto-fetched per provider</div></div>
         <div><label>Success token</label><input id="token" value="//--OBJECTIVE_ACCOMPLISHED--//"></div>
       </div>
-      <details open><summary>Provider Keys (UI-owned; optional)</summary>
+      <details id="provider_keys_section" open><summary>Provider Keys (UI-owned; optional)</summary>
         <div class="grid2">
           <div><label>OpenRouter API key</label><input id="or_key" placeholder="sk-or-..."></div>
           <div><label>Gemini API key</label><input id="gm_key" placeholder="AIza..."></div>
@@ -71,7 +71,17 @@
           <div><label>max_tokens</label><input id="max_tokens" type="number" step="1" min="1" ></div>
           <div><label>max_cycles</label><input id="max_cycles" type="number" step="1" min="1" max="8" value="1"></div>
         </div>
-        <div><label>Safety (Gemini only)</label><select id="safety"><option value="default">default</option><option value="off">off</option><option value="strict">strict</option></select></div>
+        <div id="gemini_safety_wrap">
+          <label>Safety (Gemini only)</label><select id="safety"><option value="default">default</option><option value="off">off</option><option value="strict">strict</option></select>
+        </div>
+        <div id="ollama_advanced_wrap" style="display:none; margin-top:8px;">
+          <div class="muted" style="margin-bottom:8px;">Ollama Advanced</div>
+          <div class="grid3">
+            <div><label>num_ctx</label><input id="num_ctx" type="number" step="1" min="1" placeholder="e.g. 4096"></div>
+            <div><label>repeat_penalty</label><input id="repeat_penalty" type="number" step="0.01" min="0" placeholder="e.g. 1.1"></div>
+            <div><label>seed</label><input id="seed" type="number" step="1" min="0"></div>
+          </div>
+        </div>
       </details>
       <div class="toolbar" style="margin-top:10px;"><button id="run">Run</button><label class="mini"><input type="checkbox" id="dryrun"> Dry run (no execution)</label></div>
     </div>
@@ -153,6 +163,9 @@ async function runTask(){
     top_k: $('#top_k').value ? Number($('#top_k').value) : null,
     max_tokens: $('#max_tokens').value ? Number($('#max_tokens').value) : null,
     max_cycles: $('#max_cycles').value ? Number($('#max_cycles').value) : 1,
+    num_ctx: $('#num_ctx').value ? Number($('#num_ctx').value) : null,
+    repeat_penalty: $('#repeat_penalty').value ? Number($('#repeat_penalty').value) : null,
+    seed: $('#seed').value !== "" ? Number($('#seed').value) : null,
     openrouter_key: $('#or_key').value || null, gemini_key: $('#gm_key').value || null,
     inject_logs: $('#inject_logs')?.checked || false, log_source: $('#log_source').value || null
   };
@@ -173,7 +186,16 @@ async function runTask(){
   };
   ws.onclose = () => logJson({type:'ws_close'});
 }
-$('#provider').addEventListener('change', populateModels);
+function updateUIForProvider() {
+  const p = $('#provider').value;
+  $('#provider_keys_section').style.display = (p === 'local' || p === 'echo') ? 'none' : 'block';
+  $('#gemini_safety_wrap').style.display = (p === 'gemini') ? 'block' : 'none';
+  $('#ollama_advanced_wrap').style.display = (p === 'local') ? 'block' : 'none';
+}
+$('#provider').addEventListener('change', async () => {
+  updateUIForProvider();
+  await populateModels();
+});
 $('#run').addEventListener('click', runTask);
 $('#downloadLogs').addEventListener('click', async ()=>{
   const id = state.currentTask; const s=$('#rangeStart').value; const e=$('#rangeEnd').value;
@@ -203,7 +225,8 @@ async function saveSettings(){
     or_key: $('#or_key').value, gm_key: $('#gm_key').value,
     temperature: $('#temperature').value, top_p: $('#top_p').value,
     top_k: $('#top_k').value, max_tokens: $('#max_tokens').value,
-    max_cycles: $('#max_cycles').value, safety: $('#safety').value
+    max_cycles: $('#max_cycles').value, safety: $('#safety').value,
+    num_ctx: $('#num_ctx').value, repeat_penalty: $('#repeat_penalty').value, seed: $('#seed').value
   };
   const res = await fetch('/api/settings', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
   if(res.ok) toast('Settings saved'); else toast('Failed to save settings');
@@ -224,12 +247,16 @@ async function loadSettings(){
     if(body.max_tokens) $('#max_tokens').value = body.max_tokens;
     if(body.max_cycles) $('#max_cycles').value = body.max_cycles;
     if(body.safety) $('#safety').value = body.safety;
+    if(body.num_ctx !== undefined) $('#num_ctx').value = body.num_ctx;
+    if(body.repeat_penalty !== undefined) $('#repeat_penalty').value = body.repeat_penalty;
+    if(body.seed !== undefined) $('#seed').value = body.seed;
+    updateUIForProvider();
     await populateModels();
     if(body.model) $('#model').value = body.model;
   }catch(e){}
 }
 $('#saveSettings').addEventListener('click', saveSettings);
-(async function init(){ await loadSettings(); if(!$('#model').options.length) await populateModels(); })();
+(async function init(){ await loadSettings(); updateUIForProvider(); if(!$('#model').options.length) await populateModels(); })();
 </script>
 </body>
 </html>

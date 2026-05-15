@@ -36,6 +36,9 @@ class CreateTaskRequest(BaseModel):
     top_p: float | None = None
     top_k: int | None = None
     max_tokens: int | None = None
+    num_ctx: int | None = Field(None, description="Context window size (Ollama specific)")
+    repeat_penalty: float | None = Field(None, description="Repetition penalty (Ollama specific)")
+    seed: int | None = Field(None, description="Random seed (Ollama specific)")
     safety: Any | None = None
     max_cycles: int = Field(1, ge=1, le=8)
     inject_logs: bool = Field(False, description="Toggle to inject log data into the prompt")
