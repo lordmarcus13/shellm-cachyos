@@ -69,6 +69,9 @@ async def create_task(req: CreateTaskRequest):
         if log_content:
             objective = f"<LOG_DATA log_source='{req.log_source.value}'>\n{log_content}\n</LOG_DATA>\n\n" + objective
             
+    if req.think_mode:
+        objective = "CRITICAL DIRECTIVE: You must think step-by-step before answering. Enclose your entire internal reasoning process inside <think> and </think> tags. Do not output anything else outside the tags except the final valid fish shell code block.\n\n" + objective
+            
     # Create the task
     rec = await manager.create_task(
         objective=objective, 
@@ -84,11 +87,9 @@ async def create_task(req: CreateTaskRequest):
             "max_tokens": req.max_tokens, 
             "num_ctx": req.num_ctx,
             "repeat_penalty": req.repeat_penalty,
-            "repeat_last_n": req.repeat_last_n,
             "seed": req.seed,
             "safety": req.safety, 
-            "max_cycles": req.max_cycles,
-            "think_mode": req.think_mode
+            "max_cycles": req.max_cycles
         }
     )
     

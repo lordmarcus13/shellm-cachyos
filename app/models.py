@@ -29,6 +29,7 @@ class CreateTaskRequest(BaseModel):
     model: str | None = Field(None)
     success_token: str = Field("//--OBJECTIVE_ACCOMPLISHED--//")
     dry_run: bool = Field(False)
+    think_mode: bool = Field(False, description="Enforce chain-of-thought reasoning inside <think> tags")
     system_prompt: str | None = Field(None, description="Override system instruction")
     openrouter_key: str | None = None
     gemini_key: str | None = None
@@ -38,11 +39,9 @@ class CreateTaskRequest(BaseModel):
     max_tokens: int | None = None
     num_ctx: int | None = Field(None, description="Context window size (Ollama specific)")
     repeat_penalty: float | None = Field(None, description="Repetition penalty (Ollama specific)")
-    repeat_last_n: int | None = Field(None, description="Repeat last N (Ollama specific)")
     seed: int | None = Field(None, description="Random seed (Ollama specific)")
     safety: Any | None = None
     max_cycles: int = Field(1, ge=1, le=8)
-    think_mode: bool = Field(False, description="Enforce chain of thought reasoning")
     inject_logs: bool = Field(False, description="Toggle to inject log data into the prompt")
     log_source: LogSource | None = Field(None, description="Specify which log to inject")
 
