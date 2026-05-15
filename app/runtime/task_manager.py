@@ -124,7 +124,10 @@ class TaskManager:
             
             gen_params = dict(rec.gen_params)
             max_cycles = int(gen_params.pop("max_cycles", 1))
+            think_mode = gen_params.pop("think_mode", False)
             sys_prompt = self._load_sys_prompt(rec)
+            if think_mode:
+                sys_prompt += "\n\n[SYSTEM DIRECTIVE: You MUST think step-by-step before answering. Enclose your internal reasoning process completely within <think> ... </think> tags. Do not execute actions until you have finished thinking.]"
             messages = [{"role":"system","content":sys_prompt}, {"role":"user","content":rec.objective}]
             
             for cycle in range(1, max_cycles+1):

@@ -15,7 +15,11 @@ class LocalProvider:
                 r = await client.get(OLLAMA_TAGS)
                 r.raise_for_status()
                 data = r.json()
-                return data.get("models", [])
+                models = data.get("models", [])
+                for m in models:
+                    if m.get("name", "").endswith(":latest"):
+                        m["name"] = m["name"][:-7]
+                return models
             except Exception:
                 return []
                 
@@ -42,6 +46,7 @@ class LocalProvider:
         if (num_predict := gen_params.get("max_tokens")) is not None: options["num_predict"] = num_predict
         if (num_ctx := gen_params.get("num_ctx")) is not None: options["num_ctx"] = num_ctx
         if (repeat_penalty := gen_params.get("repeat_penalty")) is not None: options["repeat_penalty"] = repeat_penalty
+        if (repeat_last_n := gen_params.get("repeat_last_n")) is not None: options["repeat_last_n"] = repeat_last_n
         if (seed := gen_params.get("seed")) is not None: options["seed"] = seed
         
         if options:

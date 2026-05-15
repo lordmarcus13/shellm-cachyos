@@ -63,22 +63,24 @@
       </details>
       <details><summary>Generation Config</summary>
         <div class="grid3">
-          <div><label>temperature</label><input id="temperature" type="number" step="0.01" min="0" max="2" placeholder="0.2"></div>
+          <div><label>temperature</label><input id="temperature" type="number" step="0.01" min="0" max="2" value="0.4"></div>
           <div><label>top_p</label><input id="top_p" type="number" step="0.01" min="0" max="1"></div>
-          <div><label>top_k</label><input id="top_k" type="number" step="1" min="0" ></div>
+          <div><label>top_k</label><input id="top_k" type="number" step="1" min="0" value="24"></div>
         </div>
         <div class="grid2">
-          <div><label>max_tokens</label><input id="max_tokens" type="number" step="1" min="1" ></div>
+          <div><label>max_tokens</label><input id="max_tokens" type="number" step="1" min="-1" value="-1"></div>
           <div><label>max_cycles</label><input id="max_cycles" type="number" step="1" min="1" max="8" value="1"></div>
         </div>
+        <label class="mini" style="margin-top: 8px; display: block;"><input type="checkbox" id="think_mode"> Enable Chain of Thought (Think)</label>
         <div id="gemini_safety_wrap">
           <label>Safety (Gemini only)</label><select id="safety"><option value="default">default</option><option value="off">off</option><option value="strict">strict</option></select>
         </div>
         <div id="ollama_advanced_wrap" style="display:none; margin-top:8px;">
           <div class="muted" style="margin-bottom:8px;">Ollama Advanced</div>
-          <div class="grid3">
-            <div><label>num_ctx</label><input id="num_ctx" type="number" step="1" min="1" placeholder="e.g. 4096"></div>
-            <div><label>repeat_penalty</label><input id="repeat_penalty" type="number" step="0.01" min="0" placeholder="e.g. 1.1"></div>
+          <div class="grid4">
+            <div><label>num_ctx</label><input id="num_ctx" type="number" step="1" min="1" value="8000"></div>
+            <div><label>repeat_penalty</label><input id="repeat_penalty" type="number" step="0.01" min="0" value="1.2"></div>
+            <div><label>repeat_last_n</label><input id="repeat_last_n" type="number" step="1" min="-1" value="80"></div>
             <div><label>seed</label><input id="seed" type="number" step="1" min="0"></div>
           </div>
         </div>
@@ -165,7 +167,9 @@ async function runTask(){
     max_cycles: $('#max_cycles').value ? Number($('#max_cycles').value) : 1,
     num_ctx: $('#num_ctx').value ? Number($('#num_ctx').value) : null,
     repeat_penalty: $('#repeat_penalty').value ? Number($('#repeat_penalty').value) : null,
+    repeat_last_n: $('#repeat_last_n').value ? Number($('#repeat_last_n').value) : null,
     seed: $('#seed').value !== "" ? Number($('#seed').value) : null,
+    think_mode: $('#think_mode')?.checked || false,
     openrouter_key: $('#or_key').value || null, gemini_key: $('#gm_key').value || null,
     inject_logs: $('#inject_logs')?.checked || false, log_source: $('#log_source').value || null
   };
@@ -226,7 +230,9 @@ async function saveSettings(){
     temperature: $('#temperature').value, top_p: $('#top_p').value,
     top_k: $('#top_k').value, max_tokens: $('#max_tokens').value,
     max_cycles: $('#max_cycles').value, safety: $('#safety').value,
-    num_ctx: $('#num_ctx').value, repeat_penalty: $('#repeat_penalty').value, seed: $('#seed').value
+    num_ctx: $('#num_ctx').value, repeat_penalty: $('#repeat_penalty').value, 
+    repeat_last_n: $('#repeat_last_n').value, seed: $('#seed').value,
+    think_mode: $('#think_mode').checked
   };
   const res = await fetch('/api/settings', {method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body)});
   if(res.ok) toast('Settings saved'); else toast('Failed to save settings');
@@ -249,7 +255,9 @@ async function loadSettings(){
     if(body.safety) $('#safety').value = body.safety;
     if(body.num_ctx !== undefined) $('#num_ctx').value = body.num_ctx;
     if(body.repeat_penalty !== undefined) $('#repeat_penalty').value = body.repeat_penalty;
+    if(body.repeat_last_n !== undefined) $('#repeat_last_n').value = body.repeat_last_n;
     if(body.seed !== undefined) $('#seed').value = body.seed;
+    if(body.think_mode !== undefined) $('#think_mode').checked = body.think_mode;
     updateUIForProvider();
     await populateModels();
     if(body.model) $('#model').value = body.model;
