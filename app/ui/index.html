@@ -44,7 +44,7 @@
       <textarea id="objective" rows="5" placeholder="Describe the goal..."></textarea>
       <details open><summary>System Instruction (optional)</summary><textarea id="sys_prompt" rows="6" placeholder="Leave empty to use enthroned instruction file"></textarea></details>
       <div class="grid3">
-        <div><label>Provider</label><select id="provider"><option value="openrouter">openrouter</option><option value="gemini">gemini</option><option value="echo">echo</option></select></div>
+        <div><label>Provider</label><select id="provider"><option value="openrouter">openrouter</option><option value="gemini">gemini</option><option value="local">local (ollama)</option><option value="echo">echo</option></select></div>
         <div><label>Model</label><select id="model"></select><div class="mini muted">Auto-fetched per provider</div></div>
         <div><label>Success token</label><input id="token" value="//--OBJECTIVE_ACCOMPLISHED--//"></div>
       </div>

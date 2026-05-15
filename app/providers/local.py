@@ -1,0 +1,45 @@
+from __future__ import annotations
+import httpx
+from typing import Iterable, Dict, Any
+
+OLLAMA_BASE_URL = "http://127.0.0.1:11434"
+OLLAMA_TAGS = f"{OLLAMA_BASE_URL}/api/tags"
+OLLAMA_CHAT = f"{OLLAMA_BASE_URL}/api/chat"
+
+class LocalProvider:
+    name = "local"
+    
+    async def list_models(self) -> list[dict]:
+        async with httpx.AsyncClient(timeout=10) as client:
+            try:
+                r = await client.get(OLLAMA_TAGS)
+                r.raise_for_status()
+                data = r.json()
+                return data.get("models", [])
+            except Exception:
+                return []
+                
+    async def complete(self, messages: Iterable[Dict[str,str]], model: str | None = None, **gen_params: Any) -> str:
+        payload: dict[str, Any] = {
+            "model": model or "llama3", 
+            "messages": list(messages), 
+            "stream": False
+        }
+        
+        # Inject standard generation params into Ollama options block
+        options = {}
+        if (temp := gen_params.get("temperature")) is not None: options["temperature"] = temp
+        if (top_p := gen_params.get("top_p")) is not None: options["top_p"] = top_p
+        if (top_k := gen_params.get("top_k")) is not None: options["top_k"] = top_k
+        if (num_predict := gen_params.get("max_tokens")) is not None: options["num_predict"] = num_predict
+        
+        if options:
+            payload["options"] = options
+            
+        async with httpx.AsyncClient(timeout=900) as client:
+            r = await client.post(OLLAMA_CHAT, json=payload)
+            r.raise_for_status()
+            data = r.json()
+            content = data.get("message", {}).get("content")
+            if not content: raise RuntimeError(f"Empty completion from local backend: {data}")
+            return content

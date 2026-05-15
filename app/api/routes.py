@@ -6,6 +6,7 @@ from ..config import settings
 from ..models import CreateTaskRequest, TaskRecord, ProviderName, LogSource
 from ..providers.openrouter import OpenRouterProvider
 from ..providers.gemini import GeminiProvider
+from ..providers.local import LocalProvider
 from ..providers.echo import EchoProvider
 from ..runtime.task_manager import TaskManager
 from ..logger import get_log_content
@@ -19,6 +20,8 @@ def make_provider(name: ProviderName, openrouter_key: Optional[str], gemini_key:
         return OpenRouterProvider(openrouter_key or settings.openrouter_api_key or "")
     if name == ProviderName.gemini: 
         return GeminiProvider(gemini_key or settings.gemini_api_key or "")
+    if name == ProviderName.local:
+        return LocalProvider()
     return EchoProvider()
 
 @router.get("/settings")
@@ -46,6 +49,10 @@ async def list_models(provider: ProviderName = Query(...), openrouter_key: Optio
         elif provider == ProviderName.gemini:
             for m in data:
                 mid = m.get("name","").split("/")[-1]
+                out.append({"id": mid, "name": mid})
+        elif provider == ProviderName.local:
+            for m in data:
+                mid = m.get("name")
                 out.append({"id": mid, "name": mid})
         else:
             for m in data: out.append({"id": m.get("id"), "name": m.get("name")})

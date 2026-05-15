@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 class ProviderName(str, enum.Enum):
     openrouter = "openrouter"
     gemini = "gemini"
+    local = "local"
     echo = "echo"
 
 class TaskStatus(str, enum.Enum):
