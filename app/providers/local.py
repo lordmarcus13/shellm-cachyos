@@ -20,8 +20,16 @@ class LocalProvider:
                 return []
                 
     async def complete(self, messages: Iterable[Dict[str,str]], model: str | None = None, **gen_params: Any) -> str:
+        if not model:
+            # Dynamically select first available model if none provided
+            available = await self.list_models()
+            if available:
+                model = available[0].get("name", "llama3")
+            else:
+                model = "llama3"
+                
         payload: dict[str, Any] = {
-            "model": model or "llama3", 
+            "model": model, 
             "messages": list(messages), 
             "stream": False
         }
@@ -38,7 +46,12 @@ class LocalProvider:
             
         async with httpx.AsyncClient(timeout=900) as client:
             r = await client.post(OLLAMA_CHAT, json=payload)
-            r.raise_for_status()
+            if r.status_code != 200:
+                err_text = r.text
+                try: err_text = r.json().get("error", r.text)
+                except Exception: pass
+                raise RuntimeError(f"Ollama API Error ({r.status_code}): {err_text}")
+                
             data = r.json()
             content = data.get("message", {}).get("content")
             if not content: raise RuntimeError(f"Empty completion from local backend: {data}")
