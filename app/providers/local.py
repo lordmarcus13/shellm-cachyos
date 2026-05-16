@@ -15,11 +15,7 @@ class LocalProvider:
                 r = await client.get(OLLAMA_TAGS)
                 r.raise_for_status()
                 data = r.json()
-                models = data.get("models", [])
-                for m in models:
-                    if m.get("name", "").endswith(":latest"):
-                        m["name"] = m["name"][:-7]
-                return models
+                return data.get("models", [])
             except Exception:
                 return []
                 
@@ -32,9 +28,28 @@ class LocalProvider:
             else:
                 model = "llama3"
                 
+        # Local models suffer from severe System Prompt Decay. 
+        # We must forcefully inject the system context into the user channel and append strict output rules.
+        msgs = list(messages)
+        sys_content = ""
+        user_msgs = []
+        
+        for m in msgs:
+            if m["role"] == "system":
+                sys_content += m["content"] + "\n\n"
+            else:
+                user_msgs.append(m)
+                
+        if user_msgs:
+            if sys_content:
+                user_msgs[0]["content"] = f"[SYSTEM DIRECTIVE OVERRIDE]\n{sys_content}\n[END SYSTEM DIRECTIVE]\n\n[USER OBJECTIVE]\n{user_msgs[0]['content']}"
+            
+            # Anti-conversational stricture on the final message
+            user_msgs[-1]["content"] += "\n\n[CRITICAL STRICT REMINDER: You are an execution terminal. Output ONLY the valid fish shell code block. Do NOT output conversational text, greetings, or narrative reasoning outside of a <think> block if enabled. Your entire response MUST be executable.]"
+        
         payload: dict[str, Any] = {
             "model": model, 
-            "messages": list(messages), 
+            "messages": user_msgs, 
             "stream": False
         }
         
@@ -46,7 +61,6 @@ class LocalProvider:
         if (num_predict := gen_params.get("max_tokens")) is not None: options["num_predict"] = num_predict
         if (num_ctx := gen_params.get("num_ctx")) is not None: options["num_ctx"] = num_ctx
         if (repeat_penalty := gen_params.get("repeat_penalty")) is not None: options["repeat_penalty"] = repeat_penalty
-        if (repeat_last_n := gen_params.get("repeat_last_n")) is not None: options["repeat_last_n"] = repeat_last_n
         if (seed := gen_params.get("seed")) is not None: options["seed"] = seed
         
         if options:
